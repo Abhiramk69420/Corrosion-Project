@@ -1,46 +1,65 @@
 import os
 import csv
+import shutil
 from datetime import datetime
 from subprocess import run
 
 import bme280
 import smbus2
 
-# -----------------------------
-# BME280 Setup
-# -----------------------------
+# =====================================
+# SETTINGS
+# =====================================
+
+MATERIAL = "steel"      # Change to aluminum, copper, stainless, etc.
+
 PORT = 1
-ADDRESS = 0x76        # Change to 0x77 if needed
+ADDRESS = 0x76          # Change to 0x77 if needed
+
+# =====================================
+# BME280 SETUP
+# =====================================
 
 bus = smbus2.SMBus(PORT)
 calibration_params = bme280.load_calibration_params(bus, ADDRESS)
 
-# -----------------------------
-# Create folders
-# -----------------------------
-os.makedirs("images", exist_ok=True)
+# =====================================
+# CREATE FOLDERS
+# =====================================
+
 os.makedirs("data", exist_ok=True)
 
-# -----------------------------
-# Timestamp
-# -----------------------------
+material_folder = os.path.join("images", MATERIAL)
+os.makedirs(material_folder, exist_ok=True)
+
+processed_folder = os.path.join("data", "processed")
+os.makedirs(processed_folder, exist_ok=True)
+
+# =====================================
+# TIMESTAMP
+# =====================================
+
 timestamp = datetime.now()
+
 time_string = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
 image_name = timestamp.strftime("%Y%m%d_%H%M%S") + ".jpg"
 
-# -----------------------------
-# Read Sensor
-# -----------------------------
+image_path = os.path.join(material_folder, image_name)
+
+# =====================================
+# READ SENSOR
+# =====================================
+
 data = bme280.sample(bus, ADDRESS, calibration_params)
 
 temperature = round(data.temperature, 2)
 humidity = round(data.humidity, 2)
 pressure = round(data.pressure, 2)
 
-# -----------------------------
-# Take Picture
-# -----------------------------
-image_path = os.path.join("images", image_name)
+# =====================================
+# TAKE PICTURE
+# =====================================
 
 run([
     "rpicam-still",
@@ -49,9 +68,20 @@ run([
     "--nopreview"
 ])
 
-# -----------------------------
-# Save CSV
-# -----------------------------
+# =====================================
+# CREATE BASELINE IMAGE
+# =====================================
+
+baseline = os.path.join(material_folder, "baseline.jpg")
+
+if not os.path.exists(baseline):
+    shutil.copy(image_path, baseline)
+    print("Baseline image created.")
+
+# =====================================
+# SAVE CSV
+# =====================================
+
 csv_file = "data/corrosion_data.csv"
 
 file_exists = os.path.isfile(csv_file)
@@ -63,6 +93,7 @@ with open(csv_file, "a", newline="") as file:
     if not file_exists:
         writer.writerow([
             "Timestamp",
+            "Material",
             "Temperature_C",
             "Humidity_%",
             "Pressure_hPa",
@@ -71,16 +102,23 @@ with open(csv_file, "a", newline="") as file:
 
     writer.writerow([
         time_string,
+        MATERIAL,
         temperature,
         humidity,
         pressure,
         image_name
     ])
 
-print("--------------------------------")
-print("Collection Complete")
-print("--------------------------------")
-print("Temperature:", temperature, "°C")
-print("Humidity:", humidity, "%")
-print("Pressure:", pressure, "hPa")
-print("Image:", image_name)
+# =====================================
+# SUMMARY
+# =====================================
+
+print("\n====================================")
+print(" Collection Complete")
+print("====================================")
+print(f"Material:    {MATERIAL}")
+print(f"Temperature: {temperature:.2f} °C")
+print(f"Humidity:    {humidity:.2f} %")
+print(f"Pressure:    {pressure:.2f} hPa")
+print(f"Image:       {image_name}")
+print("====================================")
