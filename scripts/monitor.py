@@ -14,9 +14,9 @@ while True:
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Collecting data...")
 
     try:
-        subprocess.run(["python3", "collect_data.py"], check=True)
+        subprocess.run(["python3", "scripts/collect_data.py"], check=True)
 	
-	subprocess.run(["python3","corrosion_detector.py"], check=True)
+	subprocess.run(["python3","scripts/corrosion_detector.py"], check=True)
 
         print("✓ Data collection complete")
 
